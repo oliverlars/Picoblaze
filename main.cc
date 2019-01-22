@@ -94,8 +94,7 @@ int main(int argc, char** args){
     bool Parsing = true;
     while(Parsing){
         if(*Pos){
-            char Instruction[17];
-            Instruction[17] = 0;
+            char Instruction[16];
             for(int I = 0; I < 16; I++) Instruction[I] = '0';
             if(IsAlpha(*Pos)){
                 token Token = {};
@@ -117,8 +116,8 @@ int main(int argc, char** args){
                     Num.Data = StartPos;
                     
                     int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16, Instruction);
+                    NumTo8BitBin(Addr, &Instruction[7]);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
                 }
                 
                 if(TokenMatch(Token, OUTPUT)){
@@ -135,9 +134,8 @@ int main(int argc, char** args){
                     Instruction[1] = '1';
                     Instruction[2] = '1';
                     int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16, Instruction);
-                    
+                    NumTo8BitBin(Addr, &Instruction[7]);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
                 }
                 
                 if(TokenMatch(Token, INPUT)){
@@ -153,8 +151,8 @@ int main(int argc, char** args){
                     Instruction[0] = '1';
                     Instruction[2] = '1';
                     int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16, Instruction);
+                    NumTo8BitBin(Addr, &Instruction[7]);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
                     
                 }
                 
@@ -170,7 +168,7 @@ int main(int argc, char** args){
                     Num.Data = StartPos;
                     Instruction[1] = '1';
                     int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[8]);
+                    NumTo8BitBin(Addr, &Instruction[7]);
                     printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
                 }
                 
@@ -187,8 +185,8 @@ int main(int argc, char** args){
                     Instruction[0] = '1';
                     Instruction[1] = '1';
                     int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%s\"),\n", 16, Instruction);
+                    NumTo8BitBin(Addr, &Instruction[7]);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
                 }
                 
                 if(TokenMatch(Token, JUMPU)){
@@ -203,8 +201,8 @@ int main(int argc, char** args){
                     Num.Data = StartPos;
                     Instruction[0] = '1';
                     int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16, Instruction);
+                    NumTo8BitBin(Addr, &Instruction[7]);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
                 }
                 
                 if(TokenMatch(Token, JUMPZ)){
@@ -220,8 +218,8 @@ int main(int argc, char** args){
                     Instruction[0] = '1';
                     Instruction[3] = '1';
                     int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16,Instruction);
+                    NumTo8BitBin(Addr, &Instruction[7]);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
                 }
                 
                 
@@ -239,8 +237,8 @@ int main(int argc, char** args){
                     Instruction[3] = '1';
                     Instruction[4] = '1';
                     int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16,Instruction);
+                    NumTo8BitBin(Addr, &Instruction[7]);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
                 }
                 
                 if(TokenMatch(Token, JUMPNZ)){
@@ -257,8 +255,8 @@ int main(int argc, char** args){
                     Instruction[3] = '1';
                     Instruction[5] = '1';
                     int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16, Instruction);
+                    NumTo8BitBin(Addr, &Instruction[7]);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
                 }
                 
                 
@@ -277,8 +275,8 @@ int main(int argc, char** args){
                     Instruction[4] = '1';
                     Instruction[5] = '1';
                     int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16, Instruction);
+                    NumTo8BitBin(Addr, &Instruction[7]);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
                 }
                 
             }
