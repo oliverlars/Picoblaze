@@ -1,0 +1,5 @@
+load 0
+output 254
+load 1
+output 254
+jumpu 0
