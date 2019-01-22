@@ -81,8 +81,8 @@ NumTo8BitBin(int Num, char* Result){
     for(int I = 8; I >= 0; I--){
         int K = Num >> I;
         
-        if(K & 1) Result[I] = '1';
-        else Result[I] = '0';
+        if(K & 1) Result[8-I] = '1';
+        else Result[8-I] = '0';
     }
     Result[9] = 0;
 }
