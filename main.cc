@@ -118,8 +118,9 @@ int main(int argc, char** args){
                     
                     int Addr = TokenToNumber(Num);
                     NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%s\"),\n", Instruction);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16, Instruction);
                 }
+                
                 if(TokenMatch(Token, OUTPUT)){
                     Token.Type = OUTPUT;
                     token Num = {};
@@ -135,7 +136,25 @@ int main(int argc, char** args){
                     Instruction[2] = '1';
                     int Addr = TokenToNumber(Num);
                     NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%s\"),\n", Instruction);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16, Instruction);
+                    
+                }
+                
+                if(TokenMatch(Token, INPUT)){
+                    Token.Type = OUTPUT;
+                    token Num = {};
+                    while(IsWhitespace(*Pos)) Pos++;
+                    char* StartPos = Pos;
+                    while(IsNumber(*Pos)){
+                        Pos++;
+                    }
+                    Num.Size = Pos - StartPos;
+                    Num.Data = StartPos;
+                    Instruction[0] = '1';
+                    Instruction[2] = '1';
+                    int Addr = TokenToNumber(Num);
+                    NumTo8BitBin(Addr, &Instruction[8]);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16, Instruction);
                     
                 }
                 
@@ -152,7 +171,7 @@ int main(int argc, char** args){
                     Instruction[1] = '1';
                     int Addr = TokenToNumber(Num);
                     NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%s\"),\n", Instruction);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
                 }
                 
                 if(TokenMatch(Token, ADDP)){
@@ -169,7 +188,7 @@ int main(int argc, char** args){
                     Instruction[1] = '1';
                     int Addr = TokenToNumber(Num);
                     NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%s\"),\n", Instruction);
+                    printf("DATA_RAM_WORD'(\"%s\"),\n", 16, Instruction);
                 }
                 
                 if(TokenMatch(Token, JUMPU)){
@@ -185,7 +204,7 @@ int main(int argc, char** args){
                     Instruction[0] = '1';
                     int Addr = TokenToNumber(Num);
                     NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%s\"),\n", Instruction);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16, Instruction);
                 }
                 
                 if(TokenMatch(Token, JUMPZ)){
@@ -202,7 +221,7 @@ int main(int argc, char** args){
                     Instruction[3] = '1';
                     int Addr = TokenToNumber(Num);
                     NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%s\"),\n", Instruction);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16,Instruction);
                 }
                 
                 
@@ -221,7 +240,7 @@ int main(int argc, char** args){
                     Instruction[4] = '1';
                     int Addr = TokenToNumber(Num);
                     NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%s\"),\n", Instruction);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16,Instruction);
                 }
                 
                 if(TokenMatch(Token, JUMPNZ)){
@@ -239,7 +258,7 @@ int main(int argc, char** args){
                     Instruction[5] = '1';
                     int Addr = TokenToNumber(Num);
                     NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%s\"),\n", Instruction);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16, Instruction);
                 }
                 
                 
@@ -259,7 +278,7 @@ int main(int argc, char** args){
                     Instruction[5] = '1';
                     int Addr = TokenToNumber(Num);
                     NumTo8BitBin(Addr, &Instruction[8]);
-                    printf("DATA_RAM_WORD'(\"%s\"),\n", Instruction);
+                    printf("DATA_RAM_WORD'(\"%.*s\"),\n", 16, Instruction);
                 }
                 
             }
