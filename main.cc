@@ -20,17 +20,40 @@ OpenSource(char* filename){
 }
 
 enum token_type{
-    INPUT=0,
+    LOAD=0,
+    ADD_K,
+    ADD_P,
+    INPUT,
     OUTPUT,
-    ADDK,
-    ADDP,
-    LOAD,
-    JUMPU,JUMPZ, JUMPC, JUMPNZ, JUMPNC
+    JUMP_U,
+    JUMP_Z,
+    JUMP_C,
+    JUMP_NZ,
+    JUMP_NC,
+    
+    ADD,
+    JUMP
 };
 
 char* Instructions[] =
 {
-    "input", "output", "addk","addp", "load", "jumpu", "jumpz", "jumpc", "jumpnz", "jumpnc",
+    "load", "k", "p", "input", "output", "u", "z", "c", "nz", "nc",
+    "add", "jump"
+};
+
+char* InstructionOpcodes[] =
+{
+    "00000000",
+    "01000000",
+    "11000000",
+    "10100000",
+    "11100000",
+    "10000000",
+    "10010000",
+    "10011000",
+    "10010100",
+    "10011100"
+    
 };
 
 struct token{
@@ -76,211 +99,122 @@ int TokenToNumber(token Token){
     return Result;
 }
 
+struct lexer{
+    char* Pos;
+};
+
+token ParseKeyword(lexer* L){
+    token Keyword = {};
+    
+    while(IsWhitespace(*L->Pos)) L->Pos++;
+    char* StartPos = L->Pos;
+    while(IsAlpha(*L->Pos)) L->Pos++;
+    Keyword.Size = L->Pos - StartPos;
+    Keyword.Data = StartPos;
+    for(int Type =LOAD; Type <= JUMP; Type++){
+        if(TokenMatch(Keyword, (token_type)Type)){
+            Keyword.Type = (token_type)Type;
+            break;
+        }
+    }
+    
+    return Keyword;
+}
+
+int ParseNumber(lexer* L){
+    token Number = {};
+    
+    while(IsWhitespace(*L->Pos)) L->Pos++;
+    char* StartPos = L->Pos;
+    while(IsNumber(*L->Pos)) L->Pos++;
+    Number.Size = L->Pos - StartPos;
+    Number.Data = StartPos;
+    
+    return TokenToNumber(Number);
+}
+
 static void
 NumTo8BitBin(int Num, char* Result){
-    for(int I = 8; I >= 0; I--){
+    int NoBits = 7;
+    for(int I = NoBits; I >= 0; I--){
         int K = Num >> I;
-        
-        if(K & 1) Result[8-I] = '1';
-        else Result[8-I] = '0';
+        if(K & 1) Result[NoBits-I] = '1';
+        else Result[NoBits-I] = '0';
     }
-    Result[9] = 0;
+}
+
+void EmitBinary(int Num, token_type Type){
+    char Operand[] = "00000000";
+    NumTo8BitBin(Num, Operand);
+    
+    printf("DATA_RAM_WORD'(\"%.*s", 8,InstructionOpcodes[Type]);
+    printf("%.*s\")\n", 8,Operand); 
 }
 
 int main(int argc, char** args){
     char* Source = OpenSource(args[1]);
-    
+    lexer Lex = {Source};
     char* Pos = Source;
     bool Parsing = true;
+    int LineNo = 1;
     while(Parsing){
-        if(*Pos){
-            char Instruction[16];
-            for(int I = 0; I < 16; I++) Instruction[I] = '0';
-            if(IsAlpha(*Pos)){
-                token Token = {};
-                char* StartPos = Pos;
-                while(IsAlpha(*Pos)){
-                    Pos++;
-                }
-                Token.Size = Pos - StartPos;
-                Token.Data = StartPos;
-                if(TokenMatch(Token, LOAD)){
-                    Token.Type = LOAD;
-                    token Num = {};
-                    while(IsWhitespace(*Pos)) Pos++;
-                    char* StartPos = Pos;
-                    while(IsNumber(*Pos)){
-                        Pos++;
+        if(*Lex.Pos){
+            if(IsAlpha(*Lex.Pos)){
+                token Current = ParseKeyword(&Lex);
+                switch(Current.Type){
+                    case LOAD:{
+                        int Constant = ParseNumber(&Lex);
+                        EmitBinary(Constant, LOAD);
+                    }break;
+                    case INPUT:{
+                        int Address = ParseNumber(&Lex);
+                        EmitBinary(Address, INPUT);
+                    }break;
+                    case OUTPUT:{
+                        int Address = ParseNumber(&Lex);
+                        EmitBinary(Address, OUTPUT);
+                    }break;
+                    case ADD:{
+                        token Mode = ParseKeyword(&Lex);
+                        switch(Mode.Type){
+                            case ADD_K:{
+                                int Constant = ParseNumber(&Lex);
+                                EmitBinary(Constant, ADD_K);
+                            }break;
+                            case ADD_P:{
+                                int Address = ParseNumber(&Lex);
+                                EmitBinary(Address, ADD_P);
+                            }break;
+                        }
+                    }break;
+                    case JUMP:{
+                        token Condition = ParseKeyword(&Lex);
+                        switch(Condition.Type){
+                            case JUMP_Z:{
+                                int Address = ParseNumber(&Lex);
+                                EmitBinary(Address, JUMP_Z);
+                            }break;
+                            case JUMP_C:{
+                                int Address = ParseNumber(&Lex);
+                                EmitBinary(Address, JUMP_C);
+                            }break;
+                            case JUMP_NZ:{
+                                int Address = ParseNumber(&Lex);
+                                EmitBinary(Address, JUMP_NZ);
+                            }break;
+                            case JUMP_NC:{
+                                int Address = ParseNumber(&Lex);
+                                EmitBinary(Address, JUMP_NC);
+                            }break;
+                            case JUMP_U:{
+                                int Address = ParseNumber(&Lex);
+                                EmitBinary(Address, JUMP_U);
+                            }break;
+                        }break;
                     }
-                    Num.Size = Pos - StartPos;
-                    Num.Data = StartPos;
-                    
-                    int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[7]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
                 }
-                
-                if(TokenMatch(Token, OUTPUT)){
-                    Token.Type = OUTPUT;
-                    token Num = {};
-                    while(IsWhitespace(*Pos)) Pos++;
-                    char* StartPos = Pos;
-                    while(IsNumber(*Pos)){
-                        Pos++;
-                    }
-                    Num.Size = Pos - StartPos;
-                    Num.Data = StartPos;
-                    Instruction[0] = '1';
-                    Instruction[1] = '1';
-                    Instruction[2] = '1';
-                    int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[7]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
-                }
-                
-                if(TokenMatch(Token, INPUT)){
-                    Token.Type = OUTPUT;
-                    token Num = {};
-                    while(IsWhitespace(*Pos)) Pos++;
-                    char* StartPos = Pos;
-                    while(IsNumber(*Pos)){
-                        Pos++;
-                    }
-                    Num.Size = Pos - StartPos;
-                    Num.Data = StartPos;
-                    Instruction[0] = '1';
-                    Instruction[2] = '1';
-                    int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[7]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
-                    
-                }
-                
-                if(TokenMatch(Token, ADDK)){
-                    Token.Type = ADDK;
-                    token Num = {};
-                    while(IsWhitespace(*Pos)) Pos++;
-                    char* StartPos = Pos;
-                    while(IsNumber(*Pos)){
-                        Pos++;
-                    }
-                    Num.Size = Pos - StartPos;
-                    Num.Data = StartPos;
-                    Instruction[1] = '1';
-                    int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[7]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
-                }
-                
-                if(TokenMatch(Token, ADDP)){
-                    Token.Type = ADDP;
-                    token Num = {};
-                    while(IsWhitespace(*Pos)) Pos++;
-                    char* StartPos = Pos;
-                    while(IsNumber(*Pos)){
-                        Pos++;
-                    }
-                    Num.Size = Pos - StartPos;
-                    Num.Data = StartPos;
-                    Instruction[0] = '1';
-                    Instruction[1] = '1';
-                    int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[7]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
-                }
-                
-                if(TokenMatch(Token, JUMPU)){
-                    Token.Type = JUMPU;
-                    token Num = {};
-                    while(IsWhitespace(*Pos)) Pos++;
-                    char* StartPos = Pos;
-                    while(IsNumber(*Pos)){
-                        Pos++;
-                    }
-                    Num.Size = Pos - StartPos;
-                    Num.Data = StartPos;
-                    Instruction[0] = '1';
-                    int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[7]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
-                }
-                
-                if(TokenMatch(Token, JUMPZ)){
-                    Token.Type = JUMPZ;
-                    token Num = {};
-                    while(IsWhitespace(*Pos)) Pos++;
-                    char* StartPos = Pos;
-                    while(IsNumber(*Pos)){
-                        Pos++;
-                    }
-                    Num.Size = Pos - StartPos;
-                    Num.Data = StartPos;
-                    Instruction[0] = '1';
-                    Instruction[3] = '1';
-                    int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[7]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
-                }
-                
-                
-                if(TokenMatch(Token, JUMPC)){
-                    Token.Type = JUMPC;
-                    token Num = {};
-                    while(IsWhitespace(*Pos)) Pos++;
-                    char* StartPos = Pos;
-                    while(IsNumber(*Pos)){
-                        Pos++;
-                    }
-                    Num.Size = Pos - StartPos;
-                    Num.Data = StartPos;
-                    Instruction[0] = '1';
-                    Instruction[3] = '1';
-                    Instruction[4] = '1';
-                    int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[7]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
-                }
-                
-                if(TokenMatch(Token, JUMPNZ)){
-                    Token.Type = JUMPNZ;
-                    token Num = {};
-                    while(IsWhitespace(*Pos)) Pos++;
-                    char* StartPos = Pos;
-                    while(IsNumber(*Pos)){
-                        Pos++;
-                    }
-                    Num.Size = Pos - StartPos;
-                    Num.Data = StartPos;
-                    Instruction[0] = '1';
-                    Instruction[3] = '1';
-                    Instruction[5] = '1';
-                    int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[7]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
-                }
-                
-                
-                if(TokenMatch(Token, JUMPNC)){
-                    Token.Type = JUMPNC;
-                    token Num = {};
-                    while(IsWhitespace(*Pos)) Pos++;
-                    char* StartPos = Pos;
-                    while(IsNumber(*Pos)){
-                        Pos++;
-                    }
-                    Num.Size = Pos - StartPos;
-                    Num.Data = StartPos;
-                    Instruction[0] = '1';
-                    Instruction[3] = '1';
-                    Instruction[4] = '1';
-                    Instruction[5] = '1';
-                    int Addr = TokenToNumber(Num);
-                    NumTo8BitBin(Addr, &Instruction[7]);
-                    printf("DATA_RAM_WORD'(\"%.*s\"),\n",16, Instruction);
-                }
-                
             }
-            Pos++;
+            Lex.Pos++;
         }else{
             Parsing = false;
         }
