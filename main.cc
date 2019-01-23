@@ -4,24 +4,26 @@
 #define PANIC(a, b) printf("PANIC: %s on line %d", a, b); exit(0)
 
 static char*
-OpenSource(char* filename){
-    char* Result = 0;
-    FILE* FilePointer = fopen(filename, "r");
+open_source(char* filename){
+    char* result = 0;
+    FILE* file_pointer = fopen(filename, "r");
     
-    if(FilePointer){
-        fseek(FilePointer, 0, SEEK_END);
-        size_t FileSize = ftell(FilePointer);
-        fseek(FilePointer, 0, SEEK_SET);
+    if(file_pointer){
+        fseek(file_pointer, 0, SEEK_END);
+        size_t size = ftell(file_pointer);
+        fseek(file_pointer, 0, SEEK_SET);
         
-        Result = (char*)malloc(FileSize+1);
-        fread(Result, FileSize, 1, FilePointer);
-        Result[FileSize] = 0;
-        fclose(FilePointer);
-    }else printf("Panic! unable to open file");
-    return Result;
+        result = (char*)malloc(size+1);
+        fread(result, size, 1, file_pointer);
+        result[size] = 0;
+        fclose(file_pointer);
+    }else {
+        PANIC("Unable to open file", 0);
+    }
+    return result;
 }
 
-enum token_type{
+enum TokenType{
     LOAD=0,
     ADD_K,
     ADD_P,
@@ -33,18 +35,19 @@ enum token_type{
     JUMP_NZ,
     JUMP_NC,
     
+    //Not used as an index for instructions
     ADD,
     JUMP,
     INVALID,
 };
 
-char* Instructions[] =
+char* instructions[] =
 {
     "load", "k", "p", "input", "output", "u", "z", "c", "nz", "nc",
-    "add", "jump"
+    "add", "jump" 
 };
 
-char* InstructionOpcodes[] =
+char* instruction_opcodes[] =
 {
     "00000000",
     "01000000",
@@ -56,219 +59,221 @@ char* InstructionOpcodes[] =
     "10011000",
     "10010100",
     "10011100"
-    
 };
 
-struct token{
-    token_type Type;
-    char* Data;
-    int Size;
+struct Token{
+    TokenType type;
+    char* data;
+    int size;
 };
 
-bool TokenMatch(token Token, token_type Type){
-    char* Pos = Instructions[Type];
-    for(int Index =  0; Index < Token.Size; Index++, Pos++){
-        if((*Pos == 0)||(Token.Data[Index] != *Pos)){
+static inline bool 
+token_match(Token token, TokenType type){
+    char* pos = instructions[type];
+    for(int i =  0; i < token.size; i++, pos++){
+        if((*pos == 0)||(token.data[i] != *pos)){
             return false;
         }
     }
-    bool Result = (*Pos == 0);
-    return Result;
+    bool result = (*pos == 0);
+    return result;
 }
 
-bool IsWhitespace(char C){
-    return C == ' ' || C == '\t' || C == '\n' || C == '\r' || C== '\v' || C== '\f';
+static inline bool 
+is_whitespace(char c){
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\v' || c == '\f';
 }
 
-bool IsAlpha(char C){
-    return (C >= 'a' && C <= 'z') || (C >= 'A' && C <= 'Z');
+static inline bool
+is_alpha(char c){
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-bool IsNumber(char C){
-    return (C <= '9') && (C >= '0');
+static inline bool
+is_number(char c){
+    return (c <= '9') && (c >= '0');
 }
 
-int TokenToNumber(token Token){
+static int 
+token_to_number(Token token){
     
-    auto Pow = [](int Base, int Exponent){
-        int Result = 1;
-        for(int I = 1; I < Exponent; I++){
-            Result *= Base;
+    auto pow = [](int base, int exponent){
+        int result = 1;
+        for(int i = 1; i < exponent; i++){
+            result *= base;
         }
-        return Result;
+        return result;
     };
     
-    int Result = 0;
-    for(int I = 0; I < Token.Size; I++){
-        Result += (Token.Data[I] - '0') * Pow(10, (Token.Size - I));
+    int result = 0;
+    for(int i = 0; i < token.size; i++){
+        result += (token.data[i] - '0') * pow(10, (token.size - i));
     }
-    return Result;
+    return result;
 }
 
-struct lexer{
-    char* Pos;
+struct Lexer{
+    char* pos;
 };
 
-token ParseKeyword(lexer* L){
-    token Keyword = {};
+static Token
+parse_keyword(Lexer* l){
+    Token keyword = {};
     
-    while(IsWhitespace(*L->Pos)) L->Pos++;
-    char* StartPos = L->Pos;
-    while(IsAlpha(*L->Pos)) L->Pos++;
-    Keyword.Size = L->Pos - StartPos;
-    Keyword.Data = StartPos;
-    Keyword.Type = INVALID;
-    for(int Type =LOAD; Type <= JUMP; Type++){
-        if(TokenMatch(Keyword, (token_type)Type)){
-            Keyword.Type = (token_type)Type;
+    while(is_whitespace(*l->pos)) l->pos++;
+    char* start_pos = l->pos;
+    while(is_alpha(*l->pos)) l->pos++;
+    keyword.size = l->pos - start_pos;
+    keyword.data = start_pos;
+    keyword.type = INVALID;
+    for(int type =LOAD; type <= JUMP; type++){
+        if(token_match(keyword, (TokenType)type)){
+            keyword.type = (TokenType)type;
             break;
         }
     }
-    if(Keyword.Type == INVALID) {
+    if(keyword.type == INVALID) {
         PANIC("Unknown keyword", 1);
     }
-    return Keyword;
+    return keyword;
 }
 
-char PeekError(lexer L){
-    while(IsWhitespace(*L.Pos)) L.Pos++;
-    return *L.Pos;
+static char
+peek_error(Lexer l){
+    while(is_whitespace(*l.pos)) l.pos++;
+    return *l.pos;
 }
 
 
 
-int ParseNumber(lexer* L){
-    token Number = {};
+static int 
+parse_number(Lexer* l){
+    Token number = {};
     
-    while(IsWhitespace(*L->Pos)) L->Pos++;
-    char* StartPos = L->Pos;
-    while(IsNumber(*L->Pos)) L->Pos++;
-    Number.Size = L->Pos - StartPos;
-    Number.Data = StartPos;
+    while(is_whitespace(*l->pos)) l->pos++;
+    char* start_pos = l->pos;
+    while(is_number(*l->pos)) l->pos++;
+    number.size = l->pos - start_pos;
+    number.data = start_pos;
     
-    return TokenToNumber(Number);
+    return token_to_number(number);
 }
 
 static void
-NumTo8BitBin(int Num, char* Result){
-    int NoBits = 7;
-    for(int I = NoBits; I >= 0; I--){
-        int K = Num >> I;
-        if(K & 1) Result[NoBits-I] = '1';
-        else Result[NoBits-I] = '0';
+num_to_8bit_bin(int num, char* result){
+    int no_bits = 7;
+    for(int i = no_bits; i >= 0; i--){
+        int k = num >> i;
+        if(k & 1) result[no_bits-i] = '1';
+        else result[no_bits-i] = '0';
     }
 }
 
-void EmitBinary(int Num, token_type Type){
-    char Operand[] = "00000000";
-    NumTo8BitBin(Num, Operand);
+static void 
+emit_binary(int num, TokenType type){
+    char operand[] = "00000000";
+    num_to_8bit_bin(num, operand);
     
-    printf("DATA_RAM_WORD'(\"%.*s", 8,InstructionOpcodes[Type]);
-    printf("%.*s\")\n", 8,Operand); 
+    printf("DATA_RAM_WORD'(\"%.*s", 8,instruction_opcodes[type]);
+    printf("%.*s\")\n", 8,operand); 
 }
 
 int main(int argc, char** args){
-    char* Source = OpenSource(args[1]);
-    lexer Lex = {Source};
-    char* Pos = Source;
-    bool Parsing = true;
-    int LineNo = 1;
-    while(Parsing){
-        if(*Lex.Pos){
-            if(IsAlpha(*Lex.Pos)){
-                token Current = ParseKeyword(&Lex);
-                switch(Current.Type){
+    char* source = open_source(args[1]);
+    Lexer lex = {source};
+    char* pos = source;
+    bool parsing = true;
+    int line_no = 1;
+    while(parsing){
+        if(*lex.pos){
+            if(is_alpha(*lex.pos)){
+                Token current = parse_keyword(&lex);
+                switch(current.type){
                     case LOAD:{
-                        if(!IsNumber(PeekError(Lex))){
-                            PANIC("Expected number, got letter",LineNo);
+                        if(!is_number(peek_error(lex))){
+                            PANIC("Expected number, got letter",line_no);
                         }
-                        int Constant = ParseNumber(&Lex);
-                        EmitBinary(Constant, LOAD);
+                        int constant = parse_number(&lex);
+                        emit_binary(constant, LOAD);
                     }break;
                     case INPUT:{
-                        if(!IsNumber(PeekError(Lex))){
-                            PANIC("Expected number, got letter", LineNo);
+                        if(!is_number(peek_error(lex))){
+                            PANIC("Expected number, got letter", line_no);
                         }
-                        int Address = ParseNumber(&Lex);
-                        EmitBinary(Address, INPUT);
+                        int address = parse_number(&lex);
+                        emit_binary(address, INPUT);
                     }break;
                     case OUTPUT:{
-                        if(!IsNumber(PeekError(Lex))){
-                            PANIC("Expected number, got letter", LineNo);
+                        if(!is_number(peek_error(lex))){
+                            PANIC("Expected number, got letter", line_no);
                         }
-                        int Address = ParseNumber(&Lex);
-                        EmitBinary(Address, OUTPUT);
+                        int address = parse_number(&lex);
+                        emit_binary(address, OUTPUT);
                     }break;
                     case ADD:{
-                        token Mode = ParseKeyword(&Lex);
-                        if(IsNumber(PeekError(Lex))){
-                            PANIC("Expected letter, got number", LineNo);
-                        }
-                        switch(Mode.Type){
+                        Token mode = parse_keyword(&lex);
+                        switch(mode.type){
                             case ADD_K:{
-                                if(!IsNumber(PeekError(Lex))){
-                                    PANIC("Expected number, got letter", LineNo);
+                                if(!is_number(peek_error(lex))){
+                                    PANIC("Expected number, got letter", line_no);
                                 }
-                                int Constant = ParseNumber(&Lex);
-                                EmitBinary(Constant, ADD_K);
+                                int constant = parse_number(&lex);
+                                emit_binary(constant, ADD_K);
                             }break;
                             case ADD_P:{
-                                if(!IsNumber(PeekError(Lex))){
-                                    PANIC("Expected number, got letter", LineNo);
+                                if(!is_number(peek_error(lex))){
+                                    PANIC("Expected number, got letter", line_no);
                                 }
-                                int Address = ParseNumber(&Lex);
-                                EmitBinary(Address, ADD_P);
+                                int address = parse_number(&lex);
+                                emit_binary(address, ADD_P);
                             }break;
                         }
                     }break;
                     case JUMP:{
-                        token Condition = ParseKeyword(&Lex);
-                        if(IsNumber(PeekError(Lex))){
-                            PANIC("Expected number, got letter", LineNo);
-                        }
-                        switch(Condition.Type){
+                        Token condition = parse_keyword(&lex);
+                        switch(condition.type){
                             case JUMP_Z:{
-                                if(!IsNumber(PeekError(Lex))){
-                                    PANIC("Expected number, got letter", LineNo);
+                                if(!is_number(peek_error(lex))){
+                                    PANIC("Expected number, got letter", line_no);
                                 }
-                                int Address = ParseNumber(&Lex);
-                                EmitBinary(Address, JUMP_Z);
+                                int address = parse_number(&lex);
+                                emit_binary(address, JUMP_Z);
                             }break;
                             case JUMP_C:{
-                                if(!IsNumber(PeekError(Lex))){
-                                    PANIC("Expected number, got letter", LineNo);
+                                if(!is_number(peek_error(lex))){
+                                    PANIC("Expected number, got letter", line_no);
                                 }
-                                int Address = ParseNumber(&Lex);
-                                EmitBinary(Address, JUMP_C);
+                                int address = parse_number(&lex);
+                                emit_binary(address, JUMP_C);
                             }break;
                             case JUMP_NZ:{
-                                if(!IsNumber(PeekError(Lex))){
-                                    PANIC("Expected number, got letter", LineNo);
+                                if(!is_number(peek_error(lex))){
+                                    PANIC("Expected number, got letter", line_no);
                                 }
-                                int Address = ParseNumber(&Lex);
-                                EmitBinary(Address, JUMP_NZ);
+                                int address = parse_number(&lex);
+                                emit_binary(address, JUMP_NZ);
                             }break;
                             case JUMP_NC:{
-                                if(!IsNumber(PeekError(Lex))){
-                                    PANIC("Expected number, got letter", LineNo);
+                                if(!is_number(peek_error(lex))){
+                                    PANIC("Expected number, got letter", line_no);
                                 }
-                                int Address = ParseNumber(&Lex);
-                                EmitBinary(Address, JUMP_NC);
+                                int address = parse_number(&lex);
+                                emit_binary(address, JUMP_NC);
                             }break;
                             case JUMP_U:{
-                                if(!IsNumber(PeekError(Lex))){
-                                    PANIC("Expected number, got letter", LineNo);
+                                if(!is_number(peek_error(lex))){
+                                    PANIC("Expected number, got letter", line_no);
                                 }
-                                int Address = ParseNumber(&Lex);
-                                EmitBinary(Address, JUMP_U);
+                                int address = parse_number(&lex);
+                                emit_binary(address, JUMP_U);
                             }break;
                         }break;
                     }
                 }
             }
-            Lex.Pos++;
+            lex.pos++;
         }else{
-            Parsing = false;
+            parsing = false;
         }
     }
     
