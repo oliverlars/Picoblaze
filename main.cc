@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define PANIC(a, b) printf("PANIC: %s on line %d", a, b); exit(0)
+
 static char*
 OpenSource(char* filename){
     char* Result = 0;
@@ -32,7 +34,8 @@ enum token_type{
     JUMP_NC,
     
     ADD,
-    JUMP
+    JUMP,
+    INVALID,
 };
 
 char* Instructions[] =
@@ -84,14 +87,17 @@ bool IsAlpha(char C){
 bool IsNumber(char C){
     return (C <= '9') && (C >= '0');
 }
-int Pow(int base, int exponent){
-    int Result = 1;
-    for(int I = 1; I < exponent; I++){
-        Result *= base;
-    }
-    return Result;
-}
+
 int TokenToNumber(token Token){
+    
+    auto Pow = [](int Base, int Exponent){
+        int Result = 1;
+        for(int I = 1; I < Exponent; I++){
+            Result *= Base;
+        }
+        return Result;
+    };
+    
     int Result = 0;
     for(int I = 0; I < Token.Size; I++){
         Result += (Token.Data[I] - '0') * Pow(10, (Token.Size - I));
@@ -111,15 +117,25 @@ token ParseKeyword(lexer* L){
     while(IsAlpha(*L->Pos)) L->Pos++;
     Keyword.Size = L->Pos - StartPos;
     Keyword.Data = StartPos;
+    Keyword.Type = INVALID;
     for(int Type =LOAD; Type <= JUMP; Type++){
         if(TokenMatch(Keyword, (token_type)Type)){
             Keyword.Type = (token_type)Type;
             break;
         }
     }
-    
+    if(Keyword.Type == INVALID) {
+        PANIC("Unknown keyword", 1);
+    }
     return Keyword;
 }
+
+char PeekError(lexer L){
+    while(IsWhitespace(*L.Pos)) L.Pos++;
+    return *L.Pos;
+}
+
+
 
 int ParseNumber(lexer* L){
     token Number = {};
@@ -163,25 +179,43 @@ int main(int argc, char** args){
                 token Current = ParseKeyword(&Lex);
                 switch(Current.Type){
                     case LOAD:{
+                        if(!IsNumber(PeekError(Lex))){
+                            PANIC("Expected number, got letter",LineNo);
+                        }
                         int Constant = ParseNumber(&Lex);
                         EmitBinary(Constant, LOAD);
                     }break;
                     case INPUT:{
+                        if(!IsNumber(PeekError(Lex))){
+                            PANIC("Expected number, got letter", LineNo);
+                        }
                         int Address = ParseNumber(&Lex);
                         EmitBinary(Address, INPUT);
                     }break;
                     case OUTPUT:{
+                        if(!IsNumber(PeekError(Lex))){
+                            PANIC("Expected number, got letter", LineNo);
+                        }
                         int Address = ParseNumber(&Lex);
                         EmitBinary(Address, OUTPUT);
                     }break;
                     case ADD:{
                         token Mode = ParseKeyword(&Lex);
+                        if(IsNumber(PeekError(Lex))){
+                            PANIC("Expected letter, got number", LineNo);
+                        }
                         switch(Mode.Type){
                             case ADD_K:{
+                                if(!IsNumber(PeekError(Lex))){
+                                    PANIC("Expected number, got letter", LineNo);
+                                }
                                 int Constant = ParseNumber(&Lex);
                                 EmitBinary(Constant, ADD_K);
                             }break;
                             case ADD_P:{
+                                if(!IsNumber(PeekError(Lex))){
+                                    PANIC("Expected number, got letter", LineNo);
+                                }
                                 int Address = ParseNumber(&Lex);
                                 EmitBinary(Address, ADD_P);
                             }break;
@@ -189,24 +223,42 @@ int main(int argc, char** args){
                     }break;
                     case JUMP:{
                         token Condition = ParseKeyword(&Lex);
+                        if(IsNumber(PeekError(Lex))){
+                            PANIC("Expected number, got letter", LineNo);
+                        }
                         switch(Condition.Type){
                             case JUMP_Z:{
+                                if(!IsNumber(PeekError(Lex))){
+                                    PANIC("Expected number, got letter", LineNo);
+                                }
                                 int Address = ParseNumber(&Lex);
                                 EmitBinary(Address, JUMP_Z);
                             }break;
                             case JUMP_C:{
+                                if(!IsNumber(PeekError(Lex))){
+                                    PANIC("Expected number, got letter", LineNo);
+                                }
                                 int Address = ParseNumber(&Lex);
                                 EmitBinary(Address, JUMP_C);
                             }break;
                             case JUMP_NZ:{
+                                if(!IsNumber(PeekError(Lex))){
+                                    PANIC("Expected number, got letter", LineNo);
+                                }
                                 int Address = ParseNumber(&Lex);
                                 EmitBinary(Address, JUMP_NZ);
                             }break;
                             case JUMP_NC:{
+                                if(!IsNumber(PeekError(Lex))){
+                                    PANIC("Expected number, got letter", LineNo);
+                                }
                                 int Address = ParseNumber(&Lex);
                                 EmitBinary(Address, JUMP_NC);
                             }break;
                             case JUMP_U:{
+                                if(!IsNumber(PeekError(Lex))){
+                                    PANIC("Expected number, got letter", LineNo);
+                                }
                                 int Address = ParseNumber(&Lex);
                                 EmitBinary(Address, JUMP_U);
                             }break;
