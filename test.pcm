@@ -1,0 +1,4 @@
+jump 2
+test:
+	load s2, 10
+	load s3, 15
