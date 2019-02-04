@@ -1,0 +1,3 @@
+label:
+	load s2, 10 ;THIS IS A COMMENT
+	load s3, 15 ;comments are neat
