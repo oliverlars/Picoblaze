@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 enum KeywordType: int{
     KEYWORD_JUMP = 0,
@@ -51,6 +52,8 @@ enum TokenType: int{
     TOKEN_INSTRUCTION,
     TOKEN_IDENTIFIER,
     TOKEN_NUMBER_LITERAL,
+    TOKEN_OPEN_BRACE,
+    TOKEN_CLOSE_BRACE,
     
     TOKEN_END,
     
@@ -69,6 +72,13 @@ enum Opcode: unsigned int{
     OPCODE_CALL_NZ = 0x34000,
     OPCODE_CALL_C = 0x38000,
     OPCODE_CALL_NC = 0x3C000,
+    
+    OPCODE_RETURN_U = 0x25000,
+    OPCODE_RETURN_Z = 0x31000,
+    OPCODE_RETURN_NZ = 0x35000,
+    OPCODE_RETURN_C = 0x39000,
+    OPCODE_RETURN_NC = 0x3D000,
+    
     
     OPCODE_ADD_REGISTER = 0x10000,
     OPCODE_ADD_CONSTANT = 0x11000,
@@ -116,6 +126,9 @@ enum Opcode: unsigned int{
     
     OPCODE_FETCH_REGISTER = 0x0A000,
     OPCODE_FETCH_CONSTANT = 0x0B000,
+    
+    OPCODE_INPUT_REGISTER = 0x08000,
+    OPCODE_OUTPUT_REGISTER = 0x09000,
 };
 
 union Instruction{
