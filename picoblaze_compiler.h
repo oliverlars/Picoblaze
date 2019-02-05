@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-enum KeywordTypes: int{
+enum KeywordType: int{
     KEYWORD_JUMP = 0,
     KEYWORD_CALL,
     KEYWORD_RETURN,
@@ -43,9 +43,12 @@ enum KeywordTypes: int{
 enum TokenType: int{
     TOKEN_INVALID,
     
+    TOKEN_FULLSTOP,
     TOKEN_SEMICOLON,
     TOKEN_COLON,
     TOKEN_COMMA,
+    TOKEN_CONDITION,
+    TOKEN_INSTRUCTION,
     TOKEN_IDENTIFIER,
     TOKEN_NUMBER_LITERAL,
     
@@ -132,12 +135,44 @@ union Instruction{
     
 };
 
-struct Token{
+struct String{
     char* text;
-    size_t size;
+    int len;
+};
+
+
+struct Token{
+    String str;
     TokenType type;
+};
+
+struct Hash_Node{
+    Hash_Node* next = nullptr;
+    int value;
+};
+#define HASH_SIZE 211
+
+struct Map{
+    Hash_Node* nodes[HASH_SIZE];
+    int size;
 };
 
 struct Lexer{
     char* pos;
+    bool error;
+    int instruction_count = 0;
+    Map label_map;
 };
+
+static char* instructions[]{
+    "jump","call", "return", "add", "addc", "sub", "subc", "compare",
+    "load", "and", "or", "xor", "sr0", "sr1", "srx", "sra", "rr",
+    "sl0", "sl1", "slx", "sla", "rl", "store", "fetch", "input", "output",
+};
+
+static char* conditions[]{
+    "nz", "n", "nc", "c"
+};
+
+
+#define array_count(x) sizeof(x)/sizeof(x[0])
