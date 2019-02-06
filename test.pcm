@@ -35,7 +35,7 @@ skip:
 	sub sF, 0x13
 	jump nz, loop
 	
-	load s5, 0x10
+	load s4, 0x10
 	add s4, 1
 	load sF, s4
 	sub sF, 0x14

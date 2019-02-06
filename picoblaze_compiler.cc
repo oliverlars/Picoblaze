@@ -25,10 +25,12 @@ open_source(char* filename){
 }
 
 
-#define is_newline(x) ((x) == '\n' || (x) == '\v')
-#define is_space(x) ((x) == ' ' || (x) == '\t' || is_newline(x))
+#define is_newline(x) ((x) == '\n' || (x) == '\r')
+#define is_space(x) ((x) == ' ' || (x) == '\t' || (x) == '\v' || (x) == '\f' || is_newline(x))
 #define is_digit(x) ((x) <= '9' && (x) >= '0')
-#define is_hex(x) (is_digit(x) || ((x) <= 'F' && (x) >= 'A') || ((x) <= 'f' && (x) >= 'a'))
+#define is_upper_hex(x) (is_digit(x) || ((x) <= 'F' && (x) >= 'A'))
+#define is_lower_hex(x) (is_digit(x) || ((x) <= 'f' && (x) >= 'a'))
+#define is_hex(x) (is_upper(x)  || is_lower_hex(x))
 #define is_lower_alpha(x) ((x) <= 'z' && (x) >= 'a')
 #define is_upper_alpha(x) ((x) <= 'Z' && (x) >= 'A')
 #define is_alpha(x) (is_lower_alpha(x) || is_upper_alpha(x))
@@ -79,38 +81,36 @@ static Token
 get_token(Lexer* l){
     eat_whitespace(l);
     
-    char c = *l->pos;
+    char c = l->pos[0];
     Token token = {};
+    token.str.text = l->pos;
+    token.str.len = 1;
+    ++l->pos;
     switch(c){
         case '\0':{token.type = TOKEN_END;}break;
-        case '.':{token.type = TOKEN_FULLSTOP; l->pos++;}break;
-        case ':':{token.type = TOKEN_COLON; l->pos++; } break;
-        case ',':{token.type = TOKEN_COMMA; l->pos++;} break;
-        case '(':{token.type = TOKEN_OPEN_BRACE; l->pos++;}break;
-        case ')':{token.type = TOKEN_CLOSE_BRACE; l->pos++;}break;
+        case '.':{token.type = TOKEN_FULLSTOP;}break;
+        case ':':{token.type = TOKEN_COLON; } break;
+        case ',':{token.type = TOKEN_COMMA;} break;
+        case '(':{token.type = TOKEN_OPEN_BRACE;}break;
+        case ')':{token.type = TOKEN_CLOSE_BRACE;}break;
         default:{
             token.type = TOKEN_IDENTIFIER;
-            if(is_alpha(c)){
-                token.str.text = l->pos;
-                while(is_alpha(*l->pos)){
-                    l->pos++;
-                }
+            if(is_lower_alpha(c)){
+                while(is_lower_alpha(*l->pos)){++l->pos;}
                 token.str.len = l->pos - token.str.text;
-            }
-            else if(is_digit(c)){
-                token.str.text = l->pos;
+            }else if(is_digit(c)){
                 token.type = TOKEN_NUMBER_LITERAL;
-                while(is_digit(*l->pos) || is_hex(*l->pos) || *l->pos == 'x'){
-                    l->pos++;
-                }
+                while(*l->pos == 'x' || is_upper_hex(*l->pos)){l->pos++;}
                 token.str.len = l->pos - token.str.text;
-                print_string(token.str);
             }
-            else{
-                token.type = TOKEN_INVALID;
+            else if(is_upper_hex(c)){
+                token.type = TOKEN_NUMBER_LITERAL;
+                while(is_upper_hex(*l->pos)){l->pos++;}
+                token.str.len = l->pos - token.str.text;
             }
         }break;
     }
+    print_string(token.str);
     return token;
 }
 
@@ -162,18 +162,25 @@ skip_token(Lexer* l){
 
 static inline int
 string_to_int(String str){
+    
+    auto hex = [=](char c){
+        int byte = c;
+        if(is_digit(byte)){
+            byte = byte - '0';
+        }else if(is_lower_alpha(byte)  && byte <= 'f'){
+            byte = byte - 'a' + 10;
+        }else if(is_upper_alpha(byte) && byte <= 'F'){
+            byte = byte - 'A' + 10;
+        }
+        return (byte & 0xF);
+    };
+    
     int value = 0;
+    
     if(str.text[0] == '0' && str.text[1] == 'x'){
         for(int i = 2; i < str.len; i++){
-            int byte = str.text[i];
-            if(is_digit(byte)){
-                byte = byte - '0';
-            }else if(is_lower_alpha(byte)  && byte <= 'f'){
-                byte = byte - 'a' + 10;
-            }else if(is_upper_alpha(byte) && byte <= 'F'){
-                byte = byte - 'A' + 10;
-            }
-            value = (value << 4) | (byte & 0xF);
+            int byte = hex(str.text[i]);
+            value = (value << 4) | byte;
         }
     }else{
         for(int i = 0; i < str.len; i++){
@@ -196,7 +203,7 @@ write_instruction(int opcode, int regx = 0, int regy = 0,
 }
 
 static int 
-parse_argument(Lexer* l){
+parse_register(Lexer* l){
     require_keyword(l, "s");
     Token reg = require_token(l, TOKEN_NUMBER_LITERAL);
     return string_to_int(reg.str);
@@ -291,10 +298,10 @@ parse_identifier(Lexer* l, Token token){
         write_instruction(opcode);
     }else if(match_token(token, "add")){
         int opcode = 0x00000;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         require_token(l, TOKEN_COMMA);
         if(peek_keyword(l, "s")){
-            int regy = parse_argument(l);
+            int regy = parse_register(l);
             opcode = OPCODE_ADD_REGISTER;
             write_instruction(opcode, regx, regy);
         }else{
@@ -305,10 +312,10 @@ parse_identifier(Lexer* l, Token token){
         }
     }else if(match_token(token, "addc")){
         int opcode = 0x00000;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         require_token(l, TOKEN_COMMA);
         if(peek_keyword(l, "s")){
-            int regy = parse_argument(l);
+            int regy = parse_register(l);
             opcode = OPCODE_ADDC_REGISTER;
             write_instruction(opcode, regx, regy);
         }else{
@@ -319,10 +326,10 @@ parse_identifier(Lexer* l, Token token){
         }
     }else if(match_token(token, "sub")){
         int opcode = 0x00000;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         require_token(l, TOKEN_COMMA);
         if(peek_keyword(l, "s")){
-            int regy = parse_argument(l);
+            int regy = parse_register(l);
             opcode = OPCODE_SUB_REGISTER;
             write_instruction(opcode, regx, regy);
         }else{
@@ -333,10 +340,10 @@ parse_identifier(Lexer* l, Token token){
         }
     }else if(match_token(token, "subc")){
         int opcode = 0x00000;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         require_token(l, TOKEN_COMMA);
         if(peek_keyword(l, "s")){
-            int regy = parse_argument(l);
+            int regy = parse_register(l);
             opcode = OPCODE_SUBC_REGISTER;
             write_instruction(opcode, regx, regy);
         }else{
@@ -347,10 +354,10 @@ parse_identifier(Lexer* l, Token token){
         }
     }else if(match_token(token, "compare")){
         int opcode = 0x00000;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         require_token(l, TOKEN_COMMA);
         if(peek_keyword(l, "s")){
-            int regy = parse_argument(l);
+            int regy = parse_register(l);
             opcode = OPCODE_COMPARE_REGISTER;
             write_instruction(opcode, regx, regy);
         }else{
@@ -361,24 +368,24 @@ parse_identifier(Lexer* l, Token token){
         }
     }else if(match_token(token, "load")){
         int opcode = 0x00000;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         require_token(l, TOKEN_COMMA);
         if(peek_keyword(l, "s")){
-            int regy = parse_argument(l);
+            int regy = parse_register(l);
             opcode = OPCODE_LOAD_REGISTER;
             write_instruction(opcode, regx, regy);
         }else{
             Token number = require_token(l, TOKEN_NUMBER_LITERAL);
             int value = string_to_int(number.str);
             opcode = OPCODE_LOAD_CONSTANT;
-            write_instruction(opcode, regx,0,  value);
+            write_instruction(opcode, regx, 0,  value);
         }
     }else if(match_token(token, "and")){
         int opcode = 0x00000;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         require_token(l, TOKEN_COMMA);
         if(peek_keyword(l, "s")){
-            int regy = parse_argument(l);
+            int regy = parse_register(l);
             opcode = OPCODE_AND_REGISTER;
             write_instruction(opcode, regx, regy);
         }else{
@@ -389,10 +396,10 @@ parse_identifier(Lexer* l, Token token){
         }
     }else if(match_token(token, "or")){
         int opcode = 0x00000;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         require_token(l, TOKEN_COMMA);
         if(peek_keyword(l, "s")){
-            int regy = parse_argument(l);
+            int regy = parse_register(l);
             opcode = OPCODE_OR_REGISTER;
             write_instruction(opcode, regx, regy);
         }else{
@@ -403,10 +410,10 @@ parse_identifier(Lexer* l, Token token){
         }
     }else if(match_token(token, "xor")){
         int opcode = 0x00000;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         require_token(l, TOKEN_COMMA);
         if(peek_keyword(l, "s")){
-            int regy = parse_argument(l);
+            int regy = parse_register(l);
             opcode = OPCODE_XOR_REGISTER;
             write_instruction(opcode, regx, regy);
         }else{
@@ -417,69 +424,73 @@ parse_identifier(Lexer* l, Token token){
         }
     }else if(match_token(token, "sr0")){
         int opcode = OPCODE_SR0;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         write_instruction(opcode, regx);
     }else if(match_token(token, "sr1")){
         int opcode = OPCODE_SR1;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         write_instruction(opcode, regx);
     }else if(match_token(token, "srx")){
         int opcode = OPCODE_SRX;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         write_instruction(opcode, regx);
     }else if(match_token(token, "sra")){
         int opcode = OPCODE_SRA;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         write_instruction(opcode, regx);
     }else if(match_token(token, "rr")){
         int opcode = OPCODE_RR;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         write_instruction(opcode, regx);
     }else if(match_token(token, "sl0")){
         int opcode = OPCODE_SL0;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         write_instruction(opcode, regx);
     }else if(match_token(token, "sl1")){
         int opcode = OPCODE_SL1;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         write_instruction(opcode, regx);
     }else if(match_token(token, "slx")){
         int opcode = OPCODE_SLX;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         write_instruction(opcode, regx);
     }else if(match_token(token, "sla")){
         
         int opcode = OPCODE_SLA;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         write_instruction(opcode, regx);
     }else if(match_token(token, "rl")){
         
         int opcode = OPCODE_RL;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         write_instruction(opcode, regx);
     }else if(match_token(token, "store")){
         
         int opcode = OPCODE_SR1;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         write_instruction(opcode, regx);
     }else if(match_token(token, "fetch")){
         
     }else if(match_token(token, "input")){
         
         int opcode = 0x00000;
-        int regx = parse_argument(l);
+        int regx = parse_register(l);
         require_token(l, TOKEN_COMMA);
         require_token(l, TOKEN_OPEN_BRACE);
-        int regy = parse_argument(l);
+        int regy = parse_register(l);
         require_token(l, TOKEN_CLOSE_BRACE);
         opcode = OPCODE_INPUT_REGISTER; 
         write_instruction(opcode, regx, regy);
     }else if(match_token(token, "output")){
         int opcode = 0x00000;
-        int regx = parse_argument(l);
+        require_keyword(l, "s");
+        Token reg = get_token(l);
+        int regx = string_to_int(reg.str);
         require_token(l, TOKEN_COMMA);
         require_token(l, TOKEN_OPEN_BRACE);
-        int regy = parse_argument(l);
+        require_keyword(l, "s");
+        reg = get_token(l);
+        int regy = string_to_int(reg.str);
         require_token(l, TOKEN_CLOSE_BRACE);
         opcode = OPCODE_OUTPUT_REGISTER; 
         write_instruction(opcode, regx, regy);
@@ -519,7 +530,7 @@ int main(int argc, char** args){
     l.pos = source;
     token = {};
     parsing = true;
-    
+    printf("------------------------------------\n");
     while(parsing){
         token = get_token(&l);
         switch(token.type){
