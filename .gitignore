@@ -1,6 +1,10 @@
 *
-!compiler
+!compiler/picoblaze_compiler.cc
+!compiler/picoblaze_compiler.h
+!compiler/picoblaze_hash.h
+!compiler/test.pcm
 !build.bat
 !.gitignore
 !README.md
-!vm
+!compiler/picoblaze.exe
+!vm/picoblaze_vm.exe
