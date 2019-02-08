@@ -30,13 +30,14 @@ open_object_file(char* filename,unsigned int* mem){
 
 static void
 display_memory(unsigned char* stack, unsigned char* ram, unsigned int* mem){
+    printf("\nSTACK-------------------------\n");
     for(int i = 0; i < STACKSIZE; i++){
-        printf("%x ", stack[i]);
+        printf("%03x ", stack[i]);
     }
-    printf("\n");
-    for(int i = 0; i < RAMSIZE; i+=8){
-        for(int j = 0; j < 8; j++){
-            printf("%x ", ram[i+j]);
+    printf("\n\nRAM---------------------------\n");
+    for(int i = 0; i < RAMSIZE; i+=16){
+        for(int j = 0; j < 16; j++){
+            printf("%03x ", ram[i+j]);
         }
         printf("\n");
     }
@@ -142,7 +143,6 @@ int main(int argc, char** args){
                 running = false;
             }break;
         }
-        printf("%d\n", pc);
         pc++;
     }
     display_memory(stack, ram, mem);
