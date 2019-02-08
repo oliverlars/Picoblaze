@@ -1,4 +1,6 @@
 *
+!compiler/
+!compiler/*
 !compiler/picoblaze_compiler.cc
 !compiler/picoblaze_compiler.h
 !compiler/picoblaze_hash.h
@@ -8,3 +10,5 @@
 !README.md
 !compiler/picoblaze.exe
 !vm/picoblaze_vm.exe
+!vm/
+!vm/*
