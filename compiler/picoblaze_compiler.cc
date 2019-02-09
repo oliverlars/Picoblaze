@@ -224,7 +224,7 @@ write_instruction(int opcode, int regx = 0, int regy = 0,
     instruction |= regy << 4;
     instruction |= constant;
     instruction |= address;
-    printf("%05x\n", instruction);
+    //printf("%05x\n", instruction);
     return instruction;
 }
 
@@ -568,7 +568,9 @@ parse_labels(Lexer* l, Token token){
         Label label = {};
         label.str = token.str;
         label.value = l->instruction_count;
-        sb_push(l->labels, label);
+        if(get_label_value(l, label.str) >= 0){
+            sb_push(l->labels, label);
+        }
     }else if(is_instruction(token)){
         l->instruction_count++;
     }
@@ -582,7 +584,7 @@ int main(int argc, char** args){
     l.pos = source;
     Token token = {};
     bool parsing = true;
-    
+    clock_t start = clock();
     while(parsing){
         token = get_token(&l);
         switch(token.type){
@@ -609,6 +611,9 @@ int main(int argc, char** args){
             }break;
         }
     }
+    clock_t end = clock();
+    double total = ((double)(end - start))/CLOCKS_PER_SEC;
+    printf("time taken: %f\n", total);
     printf("Compilation finished");
     return 0;
 }
