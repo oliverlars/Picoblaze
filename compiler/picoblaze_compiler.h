@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include "picoblaze_stretchy_buffer.h"
 
 enum KeywordType: int{
     KEYWORD_JUMP = 0,
@@ -144,6 +145,11 @@ struct Token{
     TokenType type;
 };
 
+struct Label{
+    String str;
+    int value;
+};
+
 struct Hash_Node{
     Hash_Node* next = nullptr;
     int value;
@@ -160,6 +166,7 @@ struct Lexer{
     bool error;
     int instruction_count = 0;
     Map label_map;
+    Label* labels = NULL;
 };
 
 static char* instructions[]{

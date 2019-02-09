@@ -1,5 +1,4 @@
 #include "picoblaze_compiler.h"
-#include "picoblaze_hash.h"
 
 #define panic(a) printf("PANIC: %s", a); exit(0)
 
@@ -14,8 +13,9 @@ open_source(char* filename){
         size_t size = ftell(file_pointer);
         fseek(file_pointer, 0, SEEK_SET);
         
-        result = (char*)calloc(size+1, sizeof(char));
+        result = (char*)calloc(size+2, sizeof(char));
         result[size] = 0;
+        result[size-1] = '\n';
         fread(result, size, 1, file_pointer);
         fclose(file_pointer);
     }else {
@@ -54,6 +54,19 @@ match_token(Token token, char* string){
         
     }
     return *pos == 0;
+}
+
+static bool
+match_string(String a, String b){
+    if(a.len != b.len) return false;
+    
+    for(int i = 0; i < a.len; i++){
+        if(a.text[i] != b.text[i]){
+            return false;
+        }
+    }
+    
+    return true;
 }
 
 static bool
@@ -221,9 +234,19 @@ parse_register(Lexer* l){
     Token reg = require_token(l, TOKEN_NUMBER_LITERAL);
     reg.str.text--;
     reg.str.len++;
-    printf("reg: ");
-    print_string(reg.str);
     return string_to_int(reg.str);
+}
+
+static int
+get_label_value(Lexer* l, String str){
+    Label* labels = l->labels;
+    while(labels){
+        if(match_string(labels[0].str, str)){
+            return labels[0].value;
+        }
+        labels++;
+    }
+    return -1;
 }
 
 static int
@@ -239,7 +262,7 @@ parse_identifier_and_return_instruction(Lexer* l, Token token){
                     require_token(l, TOKEN_COMMA);
                     Token next = get_token(l);
                     if(next.type == TOKEN_IDENTIFIER){
-                        address = map_get(l->label_map, next.str); 
+                        address = get_label_value(l, next.str); 
                     }else if(next.type == TOKEN_NUMBER_LITERAL){
                         address = string_to_int(next.str); 
                     }
@@ -248,7 +271,7 @@ parse_identifier_and_return_instruction(Lexer* l, Token token){
                     require_token(l, TOKEN_COMMA);
                     Token next = get_token(l);
                     if(next.type == TOKEN_IDENTIFIER){
-                        address = map_get(l->label_map, next.str); 
+                        address = get_label_value(l, next.str); 
                     }else if(next.type == TOKEN_NUMBER_LITERAL){
                         address = string_to_int(next.str); 
                     }
@@ -257,7 +280,7 @@ parse_identifier_and_return_instruction(Lexer* l, Token token){
                     require_token(l, TOKEN_COMMA);
                     Token next = get_token(l);
                     if(next.type == TOKEN_IDENTIFIER){
-                        address = map_get(l->label_map, next.str); 
+                        address = get_label_value(l, next.str);
                     }else if(next.type == TOKEN_NUMBER_LITERAL){
                         address = string_to_int(next.str); 
                     }
@@ -266,14 +289,16 @@ parse_identifier_and_return_instruction(Lexer* l, Token token){
                     require_token(l, TOKEN_COMMA);
                     Token next = get_token(l);
                     if(next.type == TOKEN_IDENTIFIER){
-                        address = map_get(l->label_map, next.str); 
+                        address = get_label_value(l, next.str); 
+                        address = get_label_value(l, next.str);
                     }else if(next.type == TOKEN_NUMBER_LITERAL){
                         address = string_to_int(next.str); 
                     }
                     opcode=  OPCODE_JUMP_C;
                 }else{
                     opcode = OPCODE_JUMP_U;
-                    address = map_get(l->label_map, condition.str);
+                    address = get_label_value(l, condition.str);
+                    address = get_label_value(l, condition.str);
                 }
             }break;
             case TOKEN_NUMBER_LITERAL:{
@@ -292,7 +317,7 @@ parse_identifier_and_return_instruction(Lexer* l, Token token){
                     require_token(l, TOKEN_COMMA);
                     Token next = get_token(l);
                     if(next.type == TOKEN_IDENTIFIER){
-                        address = map_get(l->label_map, next.str); 
+                        address = get_label_value(l, next.str); 
                     }else if(next.type == TOKEN_NUMBER_LITERAL){
                         address = string_to_int(next.str); 
                     }
@@ -305,7 +330,7 @@ parse_identifier_and_return_instruction(Lexer* l, Token token){
                     opcode=  OPCODE_CALL_C;
                 }else{
                     opcode = OPCODE_CALL_U;
-                    address = map_get(l->label_map, condition.str);
+                    address = get_label_value(l, condition.str);
                 }
             }break;
             case TOKEN_NUMBER_LITERAL:{
@@ -313,9 +338,9 @@ parse_identifier_and_return_instruction(Lexer* l, Token token){
                 address = string_to_int(condition.str);
             }break;
         }
-        result = write_instruction(opcode, address = address);
-    }else if(match_token(token, "result =")){
-        Token condition = get_token(l);
+        result = write_instruction(opcode,0,0,0,address);
+    }else if(match_token(token, "return")){
+        Token condition = peek_token(l);
         int opcode = 0x00000;
         switch(condition.type){
             case TOKEN_IDENTIFIER:{
@@ -331,7 +356,7 @@ parse_identifier_and_return_instruction(Lexer* l, Token token){
                     opcode = OPCODE_RETURN_U;
                 }
             }break;
-            case TOKEN_NUMBER_LITERAL:{
+            default:{
                 opcode = OPCODE_RETURN_U;
             }break;
         }
@@ -540,17 +565,18 @@ parse_identifier_and_return_instruction(Lexer* l, Token token){
 static void 
 parse_labels(Lexer* l, Token token){
     if(expect_token(l, TOKEN_COLON)){
-        map_insert(l->label_map, token.str, l->instruction_count);
+        Label label = {};
+        label.str = token.str;
+        label.value = l->instruction_count;
+        sb_push(l->labels, label);
     }else if(is_instruction(token)){
         l->instruction_count++;
     }
-    //print_string(token.str);
 }
 
 int main(int argc, char** args){
     char* source = open_source(args[1]);
     
-    //printf("%s", source);
     
     Lexer l = {};
     l.pos = source;
@@ -566,7 +592,7 @@ int main(int argc, char** args){
             }break;
         }
     }
-    print_map(l.label_map);
+    
     l.pos = source;
     token = {};
     parsing = true;

@@ -1,5 +1,9 @@
-#include "picoblaze_vm.h"
+#define REGSIZE 16
+#define STACKSIZE 32
+#define RAMSIZE 256
+#define MEMSIZE 64
 
+#include "picoblaze_vm.h"
 
 static void
 open_object_file(char* filename,unsigned int* mem){
@@ -15,6 +19,7 @@ open_object_file(char* filename,unsigned int* mem){
         fclose(file_pointer);
     }else {
         printf("Unable to open file");
+        fclose(file_pointer);
     }
 }
 
@@ -24,15 +29,12 @@ open_object_file(char* filename,unsigned int* mem){
 #define get_address(x) ((x) & 0x00000FFF)
 #define get_constant(x) ((x) & 0x000000FF)
 
-#define STACKSIZE 16
-#define RAMSIZE 256
-#define MEMSIZE 64
 
 static void
-display_memory(unsigned char* stack, unsigned char* ram, unsigned int* mem){
+display_memory(unsigned char* reg, unsigned char* ram, unsigned int* mem){
     printf("\nSTACK-------------------------\n");
-    for(int i = 0; i < STACKSIZE; i++){
-        printf("%03x ", stack[i]);
+    for(int i = 0; i < REGSIZE; i++){
+        printf("%03x ", reg[i]);
     }
     printf("\n\nRAM---------------------------\n");
     for(int i = 0; i < RAMSIZE; i+=16){
@@ -43,12 +45,27 @@ display_memory(unsigned char* stack, unsigned char* ram, unsigned int* mem){
     }
 }
 
+static void
+push_stack(unsigned int* stack,unsigned int* stack_ptr, int value){
+    stack[*stack_ptr] = value;
+    (*stack_ptr)++;
+}
+
+static int
+pop_stack(unsigned int* stack, unsigned int* stack_ptr){
+    (*stack_ptr)--;
+    int result = stack[*stack_ptr];
+    return result;
+}
+
 int main(int argc, char** args){
     
-    unsigned char stack[STACKSIZE] = {};
-    unsigned char ram[RAMSIZE] = {};
-    unsigned int mem[MEMSIZE] = {};
+    unsigned char reg[REGSIZE] = {0};
+    unsigned char ram[RAMSIZE] = {0};
+    unsigned int mem[MEMSIZE] = {0};
     
+    unsigned int stack[STACKSIZE] = {0};
+    unsigned int stack_ptr = 0;
     unsigned char pc = 0;
     Status status = {};
     
@@ -57,18 +74,18 @@ int main(int argc, char** args){
     bool running = true;
     
     while(running){
-        unsigned int instruction = mem[pc];
-        unsigned int opcode = get_opcode(instruction);
+        unsigned instruction = mem[pc];
+        unsigned opcode = get_opcode(instruction);
         switch(opcode){
             case OPCODE_LOAD_CONSTANT:{
                 int regx = get_regx(instruction);
                 int constant = get_constant(instruction);
-                stack[regx] = constant;
+                reg[regx] = constant;
             }break;
             case OPCODE_LOAD_REGISTER:{
                 int regx = get_regx(instruction);
                 int regy = get_regy(instruction);
-                stack[regx] = stack[regy];
+                reg[regx] = reg[regy];
             }break;
             case OPCODE_JUMP_U:{
                 int address = get_address(instruction);
@@ -93,22 +110,22 @@ int main(int argc, char** args){
                 }
             }break;
             case OPCODE_ADD_CONSTANT:{
-                int regx = get_regx(instruction);
-                int constant = get_constant(instruction);
-                unsigned value = stack[regx] + constant;
-                if(value < stack[regx]) {
+                unsigned regx = get_regx(instruction);
+                unsigned constant = get_constant(instruction);
+                unsigned value = reg[regx] + constant;
+                if(value < reg[regx]) {
                     status.carry = true;
                 }else{
                     status.carry = true;
                 }
-                stack[regx] = value;
+                reg[regx] = value;
                 
             }break;
             case OPCODE_SUB_CONSTANT:{
                 int regx = get_regx(instruction);
                 int constant = get_constant(instruction);
-                stack[regx] -= constant;
-                if(stack[regx] == 0) {
+                reg[regx] -= constant;
+                if(reg[regx] == 0) {
                     status.zero = true;
                 }else{
                     status.zero = false;
@@ -117,13 +134,13 @@ int main(int argc, char** args){
             case OPCODE_SUB_REGISTER:{
                 int regx = get_regx(instruction);
                 int regy = get_regy(instruction);
-                if((int16_t)stack[regx] - (int16_t)stack[regy] < 0){
+                if((int16_t)reg[regx] - (int16_t)reg[regy] < 0){
                     status.carry = true;
                 }else{
                     status.carry = false;
                 }
-                stack[regx] -= stack[regy];
-                if(stack[regx] == 0) {
+                reg[regx] -= reg[regy];
+                if(reg[regx] == 0) {
                     status.zero = true;
                 }else{
                     status.zero = false;
@@ -132,19 +149,75 @@ int main(int argc, char** args){
             case OPCODE_INPUT_REGISTER:{
                 int regx = get_regx(instruction);
                 int regy = get_regy(instruction);
-                stack[regx] = ram[stack[regy]];
+                reg[regx] = ram[reg[regy]];
             }break;
             case OPCODE_OUTPUT_REGISTER:{
                 int regx = get_regx(instruction);
                 int regy = get_regy(instruction);
-                ram[stack[regy]] = stack[regx];
+                ram[reg[regy]] = reg[regx];
             }break;
             case OPCODE_HALT:{
                 running = false;
             }break;
+            case OPCODE_CALL_U:{
+                push_stack(stack, &stack_ptr, pc);
+                int address = get_address(instruction);
+                pc = --address;
+            }break;
+            case OPCODE_CALL_Z:{
+                if(status.zero){
+                    push_stack(stack, &stack_ptr, pc);
+                    int address = get_address(instruction);
+                    pc = --address;
+                }
+            }break;
+            case OPCODE_CALL_NZ:{
+                if(!status.zero){
+                    push_stack(stack, &stack_ptr, pc);
+                    int address = get_address(instruction);
+                    pc = --address;
+                }
+            }break;
+            case OPCODE_CALL_C:{
+                if(status.carry){
+                    push_stack(stack, &stack_ptr, pc);
+                    int address = get_address(instruction);
+                    pc = --address;
+                }
+            }break;
+            case OPCODE_CALL_NC:{
+                if(!status.carry){
+                    push_stack(stack, &stack_ptr, pc);
+                    int address = get_address(instruction);
+                    pc = --address;
+                }
+            }break;
+            case OPCODE_RETURN_U:{
+                pc = pop_stack(stack, &stack_ptr);
+            }break;
+            case OPCODE_RETURN_Z:{
+                if(status.zero){
+                    pc = pop_stack(stack, &stack_ptr);
+                }
+            }break;
+            case OPCODE_RETURN_NZ:{
+                if(!status.zero){
+                    pc = pop_stack(stack, &stack_ptr);
+                }
+            }break;
+            case OPCODE_RETURN_C:{
+                if(status.carry){
+                    pc = pop_stack(stack, &stack_ptr);
+                }
+            }break;
+            case OPCODE_RETURN_NC:{
+                if(!status.carry){
+                    pc = pop_stack(stack, &stack_ptr);
+                }
+            }break;
         }
         pc++;
     }
-    display_memory(stack, ram, mem);
+    display_memory(reg, ram, mem);
     return 0;
 }

@@ -27,8 +27,8 @@
 
 
 @echo Compiling...
-@clang++ -g -gcodeview compiler/picoblaze_compiler.cc -o picoblaze_compiler.o -c %CompilerFlags%
-@lld-link.exe /debug "picoblaze_compiler.o" /OUT:"compiler/picoblaze.exe" %LinkFlags% %LinkLibs%
-@clang++ -g -gcodeview vm/picoblaze_vm.cc -o picoblaze_vm.o -c %CompilerFlags%
-@lld-link.exe /debug "picoblaze_vm.o" /OUT:"vm/picoblaze_vm.exe" %LinkFlags% %LinkLibs%
+@clang++ -O3 compiler/picoblaze_compiler.cc -o picoblaze_compiler.o -c %CompilerFlags%
+@lld-link.exe  "picoblaze_compiler.o" /OUT:"compiler/picoblaze.exe" %LinkFlags% %LinkLibs%
+@clang++  -O3 vm/picoblaze_vm.cc -o picoblaze_vm.o -c %CompilerFlags%
+@lld-link.exe  "picoblaze_vm.o" /OUT:"vm/picoblaze_vm.exe" %LinkFlags% %LinkLibs%
 
