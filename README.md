@@ -27,7 +27,7 @@ namereg s0, first
 start:
 	load first, val_a
 	load s1, val_b
-	load s2, val_c
+	load s2, val_c ;This is a comment
 	load s3, val_d
 	
 	load sF, 0x10
