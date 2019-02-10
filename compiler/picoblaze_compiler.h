@@ -43,7 +43,7 @@ enum KeywordType: int{
 };
 
 enum TokenType: int{
-    TOKEN_INVALID,
+    TOKEN_INVALID=0,
     
     TOKEN_FULLSTOP,
     TOKEN_SEMICOLON,
@@ -57,6 +57,24 @@ enum TokenType: int{
     TOKEN_CLOSE_BRACE,
     
     TOKEN_END,
+    
+};
+
+char* token_types[] = {
+    "TOKEN_INVALID",
+    
+    "TOKEN_FULLSTOP",
+    "TOKEN_SEMICOLON",
+    "TOKEN_COLON",
+    "TOKEN_COMMA",
+    "TOKEN_CONDITION",
+    "TOKEN_INSTRUCTION",
+    "TOKEN_IDENTIFIER",
+    "TOKEN_NUMBER_LITERAL",
+    "TOKEN_OPEN_BRACE",
+    "TOKEN_CLOSE_BRACE",
+    
+    "TOKEN_END",
     
 };
 

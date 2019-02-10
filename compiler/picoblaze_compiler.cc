@@ -35,6 +35,7 @@ open_source(char* filename){
 #define is_upper_alpha(x) ((x) <= 'Z' && (x) >= 'A')
 #define is_alpha(x) (is_lower_alpha(x) || is_upper_alpha(x))
 #define print_string(x) printf("%.*s\n", x.len, x.text)
+#define print_token(x) printf("%s\n", token_types[token.type])
 
 static void
 eat_whitespace(Lexer* l){
@@ -110,7 +111,7 @@ get_token(Lexer* l){
         default:{
             token.type = TOKEN_IDENTIFIER;
             if(is_lower_alpha(c)){
-                while(is_lower_alpha(*l->pos)){++l->pos;}
+                while(is_lower_alpha(*l->pos) || *l->pos == '_'){++l->pos;}
                 token.str.len = l->pos - token.str.text;
             }else if(is_digit(c)){
                 token.type = TOKEN_NUMBER_LITERAL;
@@ -146,6 +147,8 @@ require_token(Lexer* l, TokenType type){
     
     Token token = get_token(l);
     if(token.type != type){
+        print_token(token);
+        print_string(token.str);
         panic("Unexpected token");
     }
     return token;
@@ -468,7 +471,6 @@ parse_identifier_and_return_instruction(Lexer* l, Token token){
             Token constant = require_token(l, TOKEN_IDENTIFIER);
             opcode = OPCODE_LOAD_CONSTANT;
             int value = get_constant_value(l, constant.str);
-            printf("%d", value);
             result = write_instruction(opcode, regx, 0, value);
         }
     }else if(match_token(token, "and")){
