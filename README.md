@@ -14,6 +14,8 @@ To run the program in the virtual machine, run the following command
 
 This will then run the program and once finished display the stack and ram locations
 
+Alternatively, running `pico.bat <name of source>` will compile the source and then run the virtual machine after
+
 ```
 start:
 	load s0, 0x34

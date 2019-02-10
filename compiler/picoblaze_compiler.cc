@@ -103,6 +103,7 @@ get_token(Lexer* l){
         case '\0':{token.type = TOKEN_END;}break;
         case '.':{token.type = TOKEN_FULLSTOP;}break;
         case ':':{token.type = TOKEN_COLON; } break;
+        case ';':{while(!is_newline(*(++l->pos))){}}break;
         case ',':{token.type = TOKEN_COMMA;} break;
         case '(':{token.type = TOKEN_OPEN_BRACE;}break;
         case ')':{token.type = TOKEN_CLOSE_BRACE;}break;
@@ -224,7 +225,7 @@ write_instruction(int opcode, int regx = 0, int regy = 0,
     instruction |= regy << 4;
     instruction |= constant;
     instruction |= address;
-    printf("%05x\n", instruction);
+    //printf("%05x\n", instruction);
     return instruction;
 }
 

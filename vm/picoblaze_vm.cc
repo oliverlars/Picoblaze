@@ -72,7 +72,6 @@ int main(int argc, char** args){
     open_object_file(args[1], mem);
     
     bool running = true;
-    
     while(running){
         unsigned instruction = mem[pc];
         unsigned opcode = get_opcode(instruction);
