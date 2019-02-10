@@ -125,6 +125,11 @@ int main(int argc, char** args){
                 int regx = get_regx(instruction);
                 int constant = get_constant(instruction);
                 reg[regx] -= constant;
+                if((int16_t)reg[regx] - (int16_t)constant < 0){
+                    status.carry = true;
+                }else{
+                    status.carry = false;
+                }
                 if(reg[regx] == 0) {
                     status.zero = true;
                 }else{

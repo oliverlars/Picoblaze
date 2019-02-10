@@ -224,7 +224,7 @@ write_instruction(int opcode, int regx = 0, int regy = 0,
     instruction |= regy << 4;
     instruction |= constant;
     instruction |= address;
-    //printf("%05x\n", instruction);
+    printf("%05x\n", instruction);
     return instruction;
 }
 
@@ -239,14 +239,22 @@ parse_register(Lexer* l){
 
 static int
 get_label_value(Lexer* l, String str){
-    Label* labels = l->labels;
-    while(labels){
-        if(match_string(labels[0].str, str)){
-            return labels[0].value;
+    for(int i = 0; i < sb_count(l->labels); i++){
+        if(match_string(l->labels[i].str, str)){
+            return l->labels[i].value;
         }
-        labels++;
     }
     return -1;
+}
+
+static bool
+match_label(Lexer* l, String str){
+    for(int i = 0; i < sb_count(l->labels); i++){
+        if(!match_string(l->labels[i].str, str)){
+            return false;
+        }
+    }
+    return true;
 }
 
 static int
@@ -568,9 +576,7 @@ parse_labels(Lexer* l, Token token){
         Label label = {};
         label.str = token.str;
         label.value = l->instruction_count;
-        if(get_label_value(l, label.str) >= 0){
-            sb_push(l->labels, label);
-        }
+        sb_push(l->labels, label);
     }else if(is_instruction(token)){
         l->instruction_count++;
     }
