@@ -132,6 +132,7 @@ enum Opcode: unsigned int{
     OPCODE_OUTPUT_REGISTER = 0x2C000,
     
     OPCODE_HALT= 0xFF000
+    
 };
 
 struct String{
@@ -150,6 +151,7 @@ struct Label{
     int value;
 };
 
+
 struct Hash_Node{
     Hash_Node* next = nullptr;
     int value;
@@ -167,6 +169,8 @@ struct Lexer{
     int instruction_count = 0;
     Map label_map;
     Label* labels = NULL;
+    Label* constants = NULL;
+    Label* nameregs = NULL;
 };
 
 static char* instructions[]{

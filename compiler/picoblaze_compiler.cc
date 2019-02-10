@@ -103,7 +103,7 @@ get_token(Lexer* l){
         case '\0':{token.type = TOKEN_END;}break;
         case '.':{token.type = TOKEN_FULLSTOP;}break;
         case ':':{token.type = TOKEN_COLON; } break;
-        case ';':{while(!is_newline(*(++l->pos))){}}break;
+        //case ';':{while(!is_newline(*(++l->pos))){}}break;
         case ',':{token.type = TOKEN_COMMA;} break;
         case '(':{token.type = TOKEN_OPEN_BRACE;}break;
         case ')':{token.type = TOKEN_CLOSE_BRACE;}break;
@@ -248,6 +248,16 @@ get_label_value(Lexer* l, String str){
     return -1;
 }
 
+static int
+get_constant_value(Lexer* l, String str){
+    for(int i = 0; i < sb_count(l->constants); i++){
+        if(match_string(l->constants[i].str, str)){
+            return l->constants[i].value;
+        }
+    }
+    return -1;
+}
+
 static bool
 match_label(Lexer* l, String str){
     for(int i = 0; i < sb_count(l->labels); i++){
@@ -261,6 +271,7 @@ match_label(Lexer* l, String str){
 static int
 parse_identifier_and_return_instruction(Lexer* l, Token token){
     int result = -1;
+    
     if(match_token(token, "jump")){
         Token condition = get_token(l);
         int address = 0;
@@ -448,11 +459,17 @@ parse_identifier_and_return_instruction(Lexer* l, Token token){
             int regy = parse_register(l);
             opcode = OPCODE_LOAD_REGISTER;
             result = write_instruction(opcode, regx, regy);
-        }else{
+        }else if(peek_token(l).type == TOKEN_NUMBER_LITERAL){
             Token number = require_token(l, TOKEN_NUMBER_LITERAL);
             int value = string_to_int(number.str);
             opcode = OPCODE_LOAD_CONSTANT;
             result = write_instruction(opcode, regx, 0,  value);
+        }else{
+            Token constant = require_token(l, TOKEN_IDENTIFIER);
+            opcode = OPCODE_LOAD_CONSTANT;
+            int value = get_constant_value(l, constant.str);
+            printf("%d", value);
+            result = write_instruction(opcode, regx, 0, value);
         }
     }else if(match_token(token, "and")){
         int opcode = 0x00000;
@@ -578,6 +595,21 @@ parse_labels(Lexer* l, Token token){
         label.str = token.str;
         label.value = l->instruction_count;
         sb_push(l->labels, label);
+    }else if(match_token(token, "constant")){
+        Token name = require_token(l, TOKEN_IDENTIFIER);
+        require_token(l, TOKEN_COMMA);
+        Token number = require_token(l, TOKEN_NUMBER_LITERAL);
+        Label label = {};
+        label.str = name.str;
+        label.value = string_to_int(number.str);
+        sb_push(l->constants, label);
+    }else if(match_token(token, "namereg")){
+        int value = parse_register(l);
+        require_token(l, TOKEN_COMMA);
+        Token name = require_token(l, TOKEN_IDENTIFIER);
+        Label label = {};
+        label.str = name.str;
+        label.value = value;
     }else if(is_instruction(token)){
         l->instruction_count++;
     }
