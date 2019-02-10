@@ -17,11 +17,17 @@ This will then run the program and once finished display the stack and ram locat
 Alternatively, running `pico.bat <name of source>` will compile the source and then run the virtual machine after
 
 ```
+constant val_a, 0x34
+constant val_b, 0x12
+constant val_c, 0x78
+constant val_d, 0x56
+
+
 start:
-	load s0, 0x34
-	load s1, 0x12
-	load s2, 0x78
-	load s3, 0x56
+	load s0, val_a
+	load s1, val_b
+	load s2, val_c
+	load s3, val_d
 	
 	load sF, 0x10
 	output s0, (sF)
