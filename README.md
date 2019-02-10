@@ -22,9 +22,10 @@ constant val_b, 0x12
 constant val_c, 0x78
 constant val_d, 0x56
 
+namereg s0, first
 
 start:
-	load s0, val_a
+	load first, val_a
 	load s1, val_b
 	load s2, val_c
 	load s3, val_d

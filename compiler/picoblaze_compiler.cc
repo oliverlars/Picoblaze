@@ -104,7 +104,7 @@ get_token(Lexer* l){
         case '\0':{token.type = TOKEN_END;}break;
         case '.':{token.type = TOKEN_FULLSTOP;}break;
         case ':':{token.type = TOKEN_COLON; } break;
-        //case ';':{while(!is_newline(*(++l->pos))){}}break;
+        case ';':{while(!is_newline(*l->pos)){++l->pos;}}break;
         case ',':{token.type = TOKEN_COMMA;} break;
         case '(':{token.type = TOKEN_OPEN_BRACE;}break;
         case ')':{token.type = TOKEN_CLOSE_BRACE;}break;
@@ -232,13 +232,36 @@ write_instruction(int opcode, int regx = 0, int regy = 0,
     return instruction;
 }
 
+static int
+get_namereg_value(Lexer* l, String str){
+    for(int i = 0; i < sb_count(l->nameregs); i++){
+        if(match_string(l->nameregs[i].str, str)){
+            return l->nameregs[i].value;
+        }
+    }
+    panic("Could not find namereg");
+}
+
 static int 
 parse_register(Lexer* l){
+    if(peek_keyword(l, "s")){
+        skip_token(l);
+        Token reg = require_token(l, TOKEN_NUMBER_LITERAL);
+        reg.str.text--;
+        reg.str.len++;
+        return string_to_int(reg.str);
+    }else{
+        Token reg = require_token(l, TOKEN_IDENTIFIER);
+        int value = get_namereg_value(l, reg.str);
+        return value;
+    }
+#if 0
     require_keyword(l, "s");
     Token reg = require_token(l, TOKEN_NUMBER_LITERAL);
     reg.str.text--;
     reg.str.len++;
     return string_to_int(reg.str);
+#endif
 }
 
 static int
@@ -248,7 +271,7 @@ get_label_value(Lexer* l, String str){
             return l->labels[i].value;
         }
     }
-    return -1;
+    panic("Could not find constant");
 }
 
 static int
@@ -258,7 +281,7 @@ get_constant_value(Lexer* l, String str){
             return l->constants[i].value;
         }
     }
-    return -1;
+    panic("Could not find constant");
 }
 
 static bool
@@ -612,6 +635,7 @@ parse_labels(Lexer* l, Token token){
         Label label = {};
         label.str = name.str;
         label.value = value;
+        sb_push(l->nameregs, label);
     }else if(is_instruction(token)){
         l->instruction_count++;
     }
